@@ -256,7 +256,7 @@ static int hsc_probe(struct i2c_client *client) {
         return ret;
     }
 
-    return 0;
+    return devm_iio_device_register(dev, indio_dev);
 }
 
 static const struct of_device_id hsc_matches[] = {
