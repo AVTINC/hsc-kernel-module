@@ -27,7 +27,6 @@
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/property.h>
-#include <linux/units.h>
 
 #include <linux/iio/buffer.h>
 #include <linux/iio/iio.h>
@@ -35,7 +34,8 @@
 #include <linux/iio/triggered_buffer.h>
 #include <asm/unaligned.h>
 
-#define HSC_I2C_STATUS  BIT(0)
+/** linux/units.h not available in kernel v5.4.x, which is our target for this project. */
+#define NANO	1000000000UL
 
 /*
  * transfer function A: 10% to 90% of 2^14
