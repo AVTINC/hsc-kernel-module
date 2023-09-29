@@ -243,7 +243,7 @@ static int hsc_probe(struct i2c_client *client) {
     data->scale = div_s64_rem(scale, NANO, &data->scale2);
 
     // If the min is zero (some gauge devices) we have no offset.
-    if (&data->pmin == 0) {
+    if (data->pmin == 0) {
         data->offset = 0;
         data->offset2 = 0;
     } else {
