@@ -199,8 +199,10 @@ static int hsc_probe(struct i2c_client *client) {
     s64 scale, offset;
 
     indio_dev = devm_iio_device_alloc(dev, sizeof(*data));
-    if (!indio_dev)
-        return dev_err_probe(dev, -ENOMEM, "couldn't get iio_dev\n");
+    if (!indio_dev) {
+        dev_err(dev, "couldn't get iio_dev\n");
+        return -ENOMEM;
+    }
 
     data = iio_priv(indio_dev);
     data->client = client;
