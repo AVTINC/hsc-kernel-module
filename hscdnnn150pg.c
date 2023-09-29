@@ -242,13 +242,19 @@ static int hsc_probe(struct i2c_client *client) {
                     data->outmax - data->outmin);
     data->scale = div_s64_rem(scale, NANO, &data->scale2);
 
-    /*
-	 * multiply with NANO before dividing by scale and later divide by NANO
-	 * again.
-	 */
-    offset = ((-1LL) * (s64)data->outmin) * NANO -
-             div_s64(div_s64((s64)data->pmin * NANO, scale), NANO);
-    data->offset = div_s64_rem(offset, NANO, &data->offset2);
+    // If the min is zero (some gauge devices) we have no offset.
+    if (&data->pmin == 0) {
+        data->offset = 0;
+        data->offset2 = 0;
+    } else {
+        /*
+         * multiply with NANO before dividing by scale and later divide by NANO
+         * again.
+         */
+        offset = ((-1LL) * (s64) data->outmin) * NANO -
+                 div_s64(div_s64((s64) data->pmin * NANO, scale), NANO);
+        data->offset = div_s64_rem(offset, NANO, &data->offset2);
+    }
 
     ret = devm_iio_triggered_buffer_setup(dev, indio_dev, NULL, hsc_trigger_handler, NULL);
     if (ret) {
