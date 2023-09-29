@@ -214,14 +214,14 @@ static int hsc_probe(struct i2c_client *client) {
     indio_dev->num_channels = ARRAY_SIZE(hsc_channels);
     indio_dev->modes = INDIO_DIRECT_MODE;
 
-    ret = device_property_read_u16(dev, "honeywell,pmin-pascal", &data->pmin);
+    ret = device_property_read_u16(dev, "honeywell,pmin", &data->pmin);
     if (ret) {
-        dev_err(dev, "honeywell,pmin-pascal could not be read\n");
+        dev_err(dev, "honeywell,pmin could not be read\n");
         return ret;
     }
-    ret = device_property_read_u16(dev, "honeywell,pmax-pascal", &data->pmax);
+    ret = device_property_read_u16(dev, "honeywell,pmax", &data->pmax);
     if (ret) {
-        dev_err(dev, "honeywell,pmax-pascal could not be read\n");
+        dev_err(dev, "honeywell,pmax could not be read\n");
         return ret;
     }
     ret = device_property_read_u32(dev, "honeywell,transfer-function", &data->function);
