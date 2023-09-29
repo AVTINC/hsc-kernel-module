@@ -214,18 +214,22 @@ static int hsc_probe(struct i2c_client *client) {
 
     ret = device_property_read_u16(dev, "honeywell,pmin-pascal", &data->pmin);
     if (ret) {
-        return dev_err_probe(dev, ret, "honeywell,pmin-pascal could not be read\n");
+        dev_err(dev, "honeywell,pmin-pascal could not be read\n");
+        return ret;
     }
     ret = device_property_read_u16(dev, "honeywell,pmax-pascal", &data->pmax);
     if (ret) {
-        return dev_err_probe(dev, ret, "honeywell,pmax-pascal could not be read\n");
+        dev_err(dev, "honeywell,pmax-pascal could not be read\n");
+        return ret;
     }
     ret = device_property_read_u32(dev, "honeywell,transfer-function", &data->function);
     if (ret) {
-        return dev_err_probe(dev, ret, "honeywell,transfer-function could not be read\n");
+        dev_err(dev, "honeywell,transfer-function could not be read\n");
+        return ret;
     }
     if (data->function > HSC_FUNCTION_F) {
-        return dev_err_probe(dev, -EINVAL, "honeywell,transfer-function %d invalid\n", data->function);
+        dev_err(dev, "honeywell,transfer-function %d invalid\n", data->function);
+        return ret;
     }
 
     data->outmin = hsc_func_spec[data->function].output_min;
@@ -246,7 +250,8 @@ static int hsc_probe(struct i2c_client *client) {
 
     ret = devm_iio_triggered_buffer_setup(dev, indio_dev, NULL, hsc_trigger_handler, NULL);
     if (ret) {
-        return dev_err_probe(dev, ret, "unable to register iio device\n");
+        dev_err(dev, "unable to register iio device\n");
+        return ret;
     }
 
     return 0;
