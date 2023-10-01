@@ -237,10 +237,13 @@ static int hsc_probe(struct i2c_client *client) {
     data->outmin = hsc_func_spec[data->function].output_min;
     data->outmax = hsc_func_spec[data->function].output_max;
 
+    pr_err(" About to calculate scale.");
     /* use 64 bit calculation for preserving a reasonable precision */
     scale = div_s64(((s64)(data->pmax - data->pmin)) * NANO,
                     data->outmax - data->outmin);
+    pr_err(" scale: %lld\n", scale);
     data->scale = div_s64_rem(scale, NANO, &data->scale2);
+    pr_err(" data->scale: %lld data->scale2: %ld\n", data->scale, data->scale2);
 
     // If the min is zero (some gauge devices) we have no offset.
     if (data->pmin == 0) {
