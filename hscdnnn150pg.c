@@ -112,7 +112,7 @@ static const struct iio_chan_spec hsc_channels[] = {
                 // TODO: Shift
             }
         },
-        IIO_CHAN_SOFT_TIMESTAMP(1),
+        IIO_CHAN_SOFT_TIMESTAMP(2),
 };
 
 /**
