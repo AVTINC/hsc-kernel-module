@@ -36,6 +36,7 @@
 
 /** linux/units.h not available in kernel v5.4.x, which is our target for this project. */
 #define NANO	1000000000UL
+#define NOT_READY 0xC0
 
 /*
  * transfer function A: 10% to 90% of 2^14
@@ -63,7 +64,8 @@ static const struct hsc_func_spec hsc_func_spec[] = {
 };
 
 struct hsc_chan {
-    s32     pres;   /* pressure value */
+    s16     pres;   /* pressure value */
+    s16     temp;   /* temperature value */
     s64     ts;     /* timestamp */
 };
 
@@ -84,7 +86,7 @@ struct hsc_data {
 };
 
 static const struct iio_chan_spec hsc_channels[] = {
-        {
+    {
             .type = IIO_PRESSURE,
             .info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |
                                     BIT(IIO_CHAN_INFO_SCALE) |
@@ -92,10 +94,23 @@ static const struct iio_chan_spec hsc_channels[] = {
             .scan_index = 0,
             .scan_type = {
                     .sign = 's',
-                    .realbits = 32,
-                    .storagebits = 32,
+                    .realbits = 14,
+                    .storagebits = 16,
                     .endianness = IIO_CPU,
+                    // TODO: Shift
             },
+        },
+    {
+            .type = IIO_TEMP,
+            .info_mask_separate = BIT(IIO_CHAN_INFO_RAW),
+            .scan_index = 1,
+            .scan_type = {
+                .sign = 's',
+                .realbits = 11,
+                .storagebits = 16,
+                .endianness = IIO_CPU,
+                // TODO: Shift
+            }
         },
         IIO_CHAN_SOFT_TIMESTAMP(1),
 };
@@ -115,7 +130,7 @@ static const struct iio_chan_spec hsc_channels[] = {
  * * 0		- OK, the pressure value could be read
  * * -EIO	- if something goes wrong.
  */
-static int hsc_read_pressure(struct hsc_data *data, s32 *press) {
+static int hsc_read(struct hsc_data *data, s16 *press, s16 *temp) {
     struct device *dev = &data->client->dev;
     int ret;
     u8 buf[4];
@@ -131,7 +146,14 @@ static int hsc_read_pressure(struct hsc_data *data, s32 *press) {
         return -EIO;
     }
 
-    *press = get_unaligned_be32(&buf[0]);
+    // Status bits are bits 7 and 8 of the first byte in the buffer.
+    if ((buf[0] & NOT_READY) != 0) {
+        dev_err(dev, "Device not ready. ret: %d\n", ret);
+        return -EIO;
+    }
+
+    *press = get_unaligned_be16(&buf[0]);
+    *temp = (get_unaligned_be16(&buf[2]) >> 5);
 
     return 0;
 }
@@ -143,7 +165,7 @@ static irqreturn_t hsc_trigger_handler(int irq, void *p) {
     struct hsc_data *data = iio_priv(indio_dev);
 
     mutex_lock(&data->lock);
-    ret = hsc_read_pressure(data, &data->chan.pres);
+    ret = hsc_read(data, &data->chan.pres, &data->chan.temp);
 
     if (ret >= 0) {
         iio_push_to_buffers_with_timestamp(indio_dev, &data->chan, iio_get_time_ns(indio_dev));
@@ -157,7 +179,8 @@ static irqreturn_t hsc_trigger_handler(int irq, void *p) {
 
 static int hsc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, int *val, int *val2, long mask) {
     int ret;
-    s32 pressure;
+    s16 pressure;
+    s16 temp;
     struct hsc_data *data = iio_priv(indio_dev);
 
     if (chan->type != IIO_PRESSURE) {
@@ -167,21 +190,42 @@ static int hsc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const *c
     switch (mask) {
         case IIO_CHAN_INFO_RAW:
             mutex_lock(&data->lock);
-            ret = hsc_read_pressure(data, &pressure);
+            ret = hsc_read(data, &pressure, &temp);
             mutex_unlock(&data->lock);
             if (ret < 0) {
                 return ret;
             }
-            *val = pressure;
+
+            // Figure out which channel.
+            if (chan->scan_index == 0) {
+                *val = pressure;
+            } else if (chan->scan_index == 1) {
+                *val = temp;
+            } else {
+                return -EINVAL;
+            }
+
             return IIO_VAL_INT;
         case IIO_CHAN_INFO_SCALE:
-            *val = data->scale;
-            *val2 = data->scale2;
-            return IIO_VAL_INT_PLUS_NANO;
+            if (chan->scan_index == 0) {
+                *val = data->scale;
+                *val2 = data->scale2;
+                return IIO_VAL_INT_PLUS_NANO;
+            } else if (chan->scan_index == 1) {
+                *val = 0; // TODO: Temp scaling?
+                return IIO_VAL_INT;
+            }
+            return -EINVAL;
         case IIO_CHAN_INFO_OFFSET:
-            *val = data->offset;
-            *val2 = data->offset2;
-            return IIO_VAL_INT_PLUS_NANO;
+            if (chan->scan_index == 0) {
+                *val = data->offset;
+                *val2 = data->offset2;
+                return IIO_VAL_INT_PLUS_NANO;
+            } else if (chan->scan_index == 1) {
+                *val = 0; // TODO: Temp offset?
+                return IIO_VAL_INT;
+            }
+            return -EINVAL;
         default:
             return -EINVAL;
     }
