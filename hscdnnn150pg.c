@@ -183,10 +183,6 @@ static int hsc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const *c
     s16 temp;
     struct hsc_data *data = iio_priv(indio_dev);
 
-    if (chan->type != IIO_PRESSURE) {
-        return -EINVAL;
-    }
-
     switch (mask) {
         case IIO_CHAN_INFO_RAW:
             mutex_lock(&data->lock);
@@ -199,33 +195,19 @@ static int hsc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const *c
             // Figure out which channel.
             if (chan->scan_index == 0) {
                 *val = pressure;
-            } else if (chan->scan_index == 1) {
-                *val = temp;
-            } else {
-                return -EINVAL;
             }
-
+            if (chan->scan_index == 1) {
+                *val = temp;
+            }
             return IIO_VAL_INT;
         case IIO_CHAN_INFO_SCALE:
-            if (chan->scan_index == 0) {
-                *val = data->scale;
-                *val2 = data->scale2;
-                return IIO_VAL_INT_PLUS_NANO;
-            } else if (chan->scan_index == 1) {
-                *val = 0; // TODO: Temp scaling?
-                return IIO_VAL_INT;
-            }
-            return -EINVAL;
+            *val = data->scale;
+            *val2 = data->scale2;
+            return IIO_VAL_INT_PLUS_NANO;
         case IIO_CHAN_INFO_OFFSET:
-            if (chan->scan_index == 0) {
-                *val = data->offset;
-                *val2 = data->offset2;
-                return IIO_VAL_INT_PLUS_NANO;
-            } else if (chan->scan_index == 1) {
-                *val = 0; // TODO: Temp offset?
-                return IIO_VAL_INT;
-            }
-            return -EINVAL;
+            *val = data->offset;
+            *val2 = data->offset2;
+            return IIO_VAL_INT_PLUS_NANO;
         default:
             return -EINVAL;
     }
