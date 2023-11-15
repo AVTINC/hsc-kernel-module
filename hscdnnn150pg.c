@@ -97,7 +97,6 @@ static const struct iio_chan_spec hsc_channels[] = {
                     .realbits = 14,
                     .storagebits = 16,
                     .endianness = IIO_CPU,
-                    // TODO: Shift
             },
         },
     {
@@ -109,7 +108,6 @@ static const struct iio_chan_spec hsc_channels[] = {
                 .realbits = 11,
                 .storagebits = 16,
                 .endianness = IIO_CPU,
-                // TODO: Shift
             }
         },
         IIO_CHAN_SOFT_TIMESTAMP(2),
