@@ -38,29 +38,9 @@
 #define NANO	1000000000UL
 #define NOT_READY 0xC0
 
-/*
- * transfer function A: 10% to 90% of 2^14
- * transfer function B: 5% to 95% of 2^14
- * transfer function C: 5% to 85% of 2^14
- * transfer function F: 4% to 94% of 2^14
- */
-enum hsc_func_id {
-    HSC_FUNCTION_A,
-    HSC_FUNCTION_B,
-    HSC_FUNCTION_C,
-    HSC_FUNCTION_F,
-};
-
 struct hsc_func_spec {
     u16             output_min;
     u16             output_max;
-};
-
-static const struct hsc_func_spec hsc_func_spec[] = {
-    [HSC_FUNCTION_A] = {.output_min = 1638, .output_max = 14745},
-    [HSC_FUNCTION_B] = {.output_min = 819, .output_max = 15564},
-    [HSC_FUNCTION_C] = {.output_min = 819, .output_max = 13926},
-    [HSC_FUNCTION_F] = {.output_min = 655, .output_max = 15400},
 };
 
 struct hsc_chan {
@@ -74,8 +54,7 @@ struct hsc_data {
     struct mutex        lock;
 
     u16                 pmin; /* minimal pressure in pascal */
-    u16                 pmax;
-    enum hsc_func_id  function;
+    u16                 pmax; /* maximum pressure in pascal */
     u16                 outmin; /* minimal numerical range raw value from sensor */
     u16                 outmax; /* maximal numerical range raw value from sensor */
     int                 scale;
@@ -249,18 +228,9 @@ static int hsc_probe(struct i2c_client *client) {
         dev_err(dev, "honeywell,pmax could not be read\n");
         return ret;
     }
-    ret = device_property_read_u32(dev, "honeywell,transfer-function", &data->function);
-    if (ret) {
-        dev_err(dev, "honeywell,transfer-function could not be read\n");
-        return ret;
-    }
-    if (data->function > HSC_FUNCTION_F) {
-        dev_err(dev, "honeywell,transfer-function %d invalid\n", data->function);
-        return ret;
-    }
 
-    data->outmin = hsc_func_spec[data->function].output_min;
-    data->outmax = hsc_func_spec[data->function].output_max;
+    data->outmin = 0;
+    data->outmax = 1<<14;
 
     /* use 64 bit calculation for preserving a reasonable precision */
     scale = div_s64(((s64)(data->pmax - data->pmin)) * NANO,
